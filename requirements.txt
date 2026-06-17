@@ -1,0 +1,43 @@
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+requests>=2.31.0
+
+# Scraping
+playwright>=1.44.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+markdownify>=0.13.0
+
+# Graph Database
+neo4j>=5.21.0
+
+# LLM (Local via Ollama)
+ollama>=0.3.0
+
+# Embeddings
+sentence-transformers>=3.0.0
+transformers>=4.41.0
+torch>=2.3.0
+
+# Search & Ranking
+rank-bm25>=0.2.2
+scikit-learn>=1.26.0
+numpy>=1.26.0
+
+# Community Detection (Bonus)
+python-louvain>=0.16
+networkx>=3.3.0
+
+# Utilities
+tqdm>=4.66.0
+pandas>=2.2.0
+python-dateutil>=2.9.0
+
+# PDF Processing (if needed)
+pypdf>=4.2.0
+fpdf2>=2.7.0
+
+# Optional: only enable if you later want OpenAI
+# openai>=1.35.0
+# langchain-openai>=0.1.0
