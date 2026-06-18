@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from neo4j.exceptions import Neo4jError
 
 from src.config.settings import settings

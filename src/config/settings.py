@@ -33,10 +33,11 @@ class Settings:
 
     # Ollama Configuration (Local LLM & Embeddings)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_LLM_MODEL: str = os.getenv("OLLAMA_LLM_MODEL", "llama3.1:8b")
+    OLLAMA_LLM_MODEL: str = os.getenv("OLLAMA_LLM_MODEL", "qwen2.5:14b")
     OLLAMA_EMBEDDING_MODEL: str = os.getenv(
-        "OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"
+        "OLLAMA_EMBEDDING_MODEL", "qwen3-embedding:4b"
     )
+    EMBEDDING_DIMENSION: int = int(os.getenv("EMBEDDING_DIMENSION", "768"))
 
     # Scraping Configuration
     QANOON_BASE_URL: str = os.getenv("QANOON_BASE_URL", "https://qanoon.om")

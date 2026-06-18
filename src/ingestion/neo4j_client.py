@@ -113,13 +113,13 @@ class Neo4jClient:
                 "name": "topic_embeddings",
                 "label": "Topic",
                 "property": "embedding",
-                "dimension": 768,
+                "dimension": settings.EMBEDDING_DIMENSION,
             },
             {
                 "name": "chunk_embeddings",
                 "label": "Chunk",
                 "property": "embedding",
-                "dimension": 768,
+                "dimension": settings.EMBEDDING_DIMENSION,
             },
         ]
 

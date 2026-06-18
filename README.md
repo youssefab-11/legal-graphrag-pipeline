@@ -106,7 +106,7 @@ legal-graphrag-pipeline/
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - Docker & Docker Compose
 - Git
 - Ollama (free local LLM server)
@@ -118,7 +118,7 @@ legal-graphrag-pipeline/
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/youssefab-11/legal-graphrag-pipeline.git
 cd legal-graphrag-pipeline
 ```
 
@@ -141,9 +141,11 @@ playwright install chromium
 Download Ollama from [https://ollama.com](https://ollama.com), then pull the required models:
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull nomic-embed-text
+ollama pull qwen2.5:14b
+ollama pull qwen3-embedding:4b
 ```
+
+`qwen2.5:14b` is used for topic extraction and answer synthesis. `qwen3-embedding:4b` provides high-quality multilingual embeddings optimized for Arabic and English legal text. If GPU memory is limited, `qwen3-embedding:0.6b` is a good lightweight alternative.
 
 Ensure Ollama is running:
 
@@ -211,8 +213,8 @@ Then enter your legal question at the prompt.
 ## Design Trade-offs
 
 1. **Neo4j as combined graph + vector store** simplifies deployment and cross-traversal between vector results and graph relationships.
-2. **Ollama for local LLM inference** (`llama3.1:8b`) keeps the pipeline fully free and offline, with no API credits required.
-3. **Ollama `nomic-embed-text` for embeddings** provides high-quality local retrieval embeddings without external API calls.
+2. **Ollama for local LLM inference** (`qwen2.5:14b`) keeps the pipeline fully free and offline, with no API credits required.
+3. **Ollama `qwen3-embedding:4b` for embeddings** provides high-quality Arabic and English legal retrieval embeddings without external API calls.
 4. **One Document node per law** with language properties follows the exam brief and avoids unnecessary schema complexity.
 5. **Resumable checkpointing** prioritizes robustness over raw scraping speed, ensuring 100% coverage can be achieved across unstable network conditions.
 

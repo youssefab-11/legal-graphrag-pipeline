@@ -59,7 +59,7 @@ The topic extraction agent sends consolidated markdown content to a local LLM vi
 
 ### 4.5 Vector Operations
 
-Embeddings are generated locally using Ollama's `nomic-embed-text` model, which is optimized for retrieval tasks and runs efficiently on CPU. A topic merger script computes cosine similarity between topic embeddings and consolidates synonymous topics above a configurable threshold (default 0.88).
+Embeddings are generated locally using Ollama's `qwen3-embedding:4b` model, which is optimized for multilingual retrieval including Arabic and English legal text. A topic merger script computes cosine similarity between topic embeddings and consolidates synonymous topics above a configurable threshold (default 0.88).
 
 ### 4.6 Search Client
 
@@ -82,7 +82,7 @@ The search client implements a three-stage retrieval pipeline:
 |---|---|---|
 | Neo4j for graph + vector | Separate vector DB (Pinecone, Weaviate) | Simplifies deployment and traversal between vector results and graph context. |
 | Ollama for LLM | OpenAI API | Fully free, offline, no API credits required. |
-| nomic-embed-text via Ollama | OpenAI/text-embedding-3-small | Local embedding generation eliminates cost and latency. |
+| qwen3-embedding:4b via Ollama | OpenAI/text-embedding-3-small | Local embedding generation optimized for Arabic and English legal text. |
 | One Document node | Separate nodes per language | Directly follows exam schema requirement and reduces query complexity. |
 | Resumable checkpointing | Full in-memory crawl | Essential for achieving 100% coverage over unreliable network conditions. |
 
