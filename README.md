@@ -145,7 +145,7 @@ ollama pull qwen2.5:14b
 ollama pull qwen3-embedding:4b
 ```
 
-`qwen2.5:14b` is used for topic extraction and answer synthesis. `qwen3-embedding:4b` provides high-quality multilingual embeddings optimized for Arabic and English legal text. If GPU memory is limited, `qwen3-embedding:0.6b` is a good lightweight alternative.
+`qwen2.5:14b` is used for topic extraction and answer synthesis. `qwen3-embedding:4b` provides high-quality multilingual embeddings optimized for Arabic and English legal text. If GPU memory is limited and the 14B model crashes, switch to `qwen2.5:7b` and update `OLLAMA_LLM_MODEL` in `.env`.
 
 Ensure Ollama is running:
 

@@ -55,7 +55,7 @@ Neo4j Community Edition is deployed via Docker Compose. The ingestion layer uses
 
 ### 4.4 LLM Agents
 
-The topic extraction agent sends consolidated markdown content to a local LLM via Ollama (`llama3.1:8b`) with a structured prompt requesting a JSON array of topics. The chunking agent uses LangChain's `RecursiveCharacterTextSplitter` with configurable chunk size and overlap. Using a local model eliminates API costs and ensures the pipeline operates fully offline.
+The topic extraction agent sends consolidated markdown content to a local LLM via Ollama (`qwen2.5:14b`) with a structured prompt requesting a JSON array of topics. The chunking agent uses `RecursiveCharacterTextSplitter` with configurable chunk size and overlap. Using a local model eliminates API costs and ensures the pipeline operates fully offline.
 
 ### 4.5 Vector Operations
 
@@ -81,7 +81,7 @@ The search client implements a three-stage retrieval pipeline:
 | Decision | Alternative | Rationale |
 |---|---|---|
 | Neo4j for graph + vector | Separate vector DB (Pinecone, Weaviate) | Simplifies deployment and traversal between vector results and graph context. |
-| Ollama for LLM | OpenAI API | Fully free, offline, no API credits required. |
+| Ollama for LLM (`qwen2.5:14b`) | OpenAI API | Fully free, offline, no API credits required. |
 | qwen3-embedding:4b via Ollama | OpenAI/text-embedding-3-small | Local embedding generation optimized for Arabic and English legal text. |
 | One Document node | Separate nodes per language | Directly follows exam schema requirement and reduces query complexity. |
 | Resumable checkpointing | Full in-memory crawl | Essential for achieving 100% coverage over unreliable network conditions. |

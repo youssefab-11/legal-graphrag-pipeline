@@ -72,8 +72,8 @@ class SearchClient:
             )
             return response["message"]["content"]
         except Exception as exc:
-            logger.error("LLM synthesis failed: %s", exc)
-            return "Sorry, I could not generate an answer at this time."
+            logger.error("LLM synthesis failed: %s", exc, exc_info=True)
+            return f"Sorry, I could not generate an answer at this time. Error: {exc}"
 
     def search(self, query: str) -> Dict[str, Any]:
         """Execute a full search: retrieve, rerank, synthesize.
