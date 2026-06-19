@@ -13,9 +13,10 @@ The pipeline has been run end-to-end on **100 real legal documents** from [qanoo
 | Real qanoon.om documents | **100** |
 | Semantic chunks | **2,202** |
 | Extracted topics | **173** |
+| AMENDS relationships | **2** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
-| LLM | `qwen2.5:14b` |
-| Search | Hybrid BM25 + vector + rerank + synthesis |
+| LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
+| Search | Hybrid BM25 + vector + graph expand + rerank + synthesis |
 
 All sample/synthetic data has been removed; the graph contains only real legislation.
 
@@ -161,10 +162,11 @@ Download Ollama from [https://ollama.com](https://ollama.com), then pull the req
 
 ```bash
 ollama pull qwen2.5:14b
+ollama pull qwen2.5:7b
 ollama pull qwen3-embedding:4b
 ```
 
-`qwen2.5:14b` is used for topic extraction and answer synthesis. `qwen3-embedding:4b` provides high-quality multilingual embeddings optimized for Arabic and English legal text. If GPU memory is limited and the 14B model crashes, switch to `qwen2.5:7b` and update `OLLAMA_LLM_MODEL` in `.env`.
+`qwen2.5:14b` is used for topic extraction and answer synthesis. `qwen3-embedding:4b` provides high-quality multilingual embeddings optimized for Arabic and English legal text. If GPU memory is limited and the 14B model crashes, the search client automatically falls back to `qwen2.5:7b` (set `OLLAMA_FALLBACK_LLM_MODEL` in `.env`).
 
 Ensure Ollama is running:
 
@@ -243,8 +245,8 @@ Answer:
 |---|---|
 | Scraping & Evasion | Playwright with rotating headers, randomized delays, exponential backoff, and JSON-based checkpointing for resumability. |
 | Markdown Generation | Hierarchical markdown conversion preserving titles, sections, articles, and tables while stripping ads/scripts. |
-| Graph Data Modeling | Document nodes consolidate all translations as properties (`contentAr`, `contentEn`); Topics and Chunks are separate nodes. |
-| LLM Integration | Local Ollama LLM (`qwen2.5:14b`) with structured JSON prompts, batching, and safe parsing for topic extraction and answer synthesis. |
+| Graph Data Modeling | Document nodes consolidate all translations as properties (`contentAr`, `contentEn`); Topics and Chunks are separate nodes; AMENDS / REPEALS cross-references extracted from text. |
+| LLM Integration | Local Ollama LLM (`qwen2.5:14b`) with structured JSON prompts, batching, safe parsing, and automatic fallback to `qwen2.5:7b`. |
 | Vector Search & RAG | Hybrid BM25 + dense vector retrieval, graph context expansion, cross-encoder reranking, and LLM synthesis. |
 | Code Architecture | Modular packages, centralized configuration, detailed logging, and Docker-based deterministic deployment. |
 | Technical Report | Comprehensive `architecture_report.pdf` documenting design trade-offs and scaling considerations. |
@@ -255,7 +257,7 @@ Answer:
 ## Design Trade-offs
 
 1. **Neo4j as combined graph + vector store** simplifies deployment and cross-traversal between vector results and graph relationships.
-2. **Ollama for local LLM inference** (`qwen2.5:14b`) keeps the pipeline fully free and offline, with no API credits required. On GPUs with <8 GB VRAM, the 14B model may be slow; `qwen2.5:7b` is a drop-in fallback.
+2. **Ollama for local LLM inference** (`qwen2.5:14b`) keeps the pipeline fully free and offline, with no API credits required. On GPUs with <8 GB VRAM, the 14B model can crash; `SearchClient` automatically retries with `qwen2.5:7b` so queries still answer.
 3. **Ollama `qwen3-embedding:4b` for embeddings** provides high-quality Arabic and English legal retrieval embeddings without external API calls. Output dimension is 2560.
 4. **One Document node per law** with language properties (`contentAr`, `contentEn`) follows the exam brief and avoids unnecessary schema complexity.
 5. **Resumable checkpointing** prioritizes robustness over raw scraping speed, enabling incremental scaling to 100+ documents.
