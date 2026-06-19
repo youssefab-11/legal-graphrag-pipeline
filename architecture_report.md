@@ -61,13 +61,18 @@ The topic extraction agent sends consolidated markdown content to a local LLM vi
 
 Embeddings are generated locally using Ollama's `qwen3-embedding:4b` model, which is optimized for multilingual retrieval including Arabic and English legal text. A topic merger script computes cosine similarity between topic embeddings and consolidates synonymous topics above a configurable threshold (default 0.88).
 
-### 4.6 Search Client
+### 4.6 Relationship Extractor
 
-The search client implements a three-stage retrieval pipeline:
+Legal cross-references (`AMENDS` and `REPEALS`) are extracted from document content using language-specific regex patterns. Arabic-Indic numerals are normalized to Western numerals before matching. Extracted references are resolved against the graph using the target document `number` property and persisted as typed Neo4j relationships. In the current 100-document deployment, two `AMENDS` relationships were created; `REPEALS` references were detected but their targets are not present in the sample.
+
+### 4.7 Search Client
+
+The search client implements a multi-stage retrieval pipeline:
 
 1. **Candidate Generation**: Weighted combination of BM25 sparse scores and dense vector similarity scores.
-2. **Topological Context Expansion**: Graph traversal retrieves parent Document metadata and related Topics for each candidate chunk.
-3. **Cross-Encoder Reranking**: A local reranker model rescores expanded candidates against the query, and the top-N contexts are passed to the synthesis LLM.
+2. **Topological Context Expansion**: Graph traversal retrieves parent Document metadata, related Topics, and any `AMENDS`/`REPEALS` cross-references for each candidate chunk.
+3. **Cross-Encoder Reranking**: A local reranker model rescores expanded candidates against the query.
+4. **LLM Synthesis with Fallback**: The primary synthesis model (`qwen2.5:14b`) is tried first; if it fails (e.g., GPU memory exhaustion), the client automatically retries with a configured fallback model (`qwen2.5:7b`) so queries remain answerable.
 
 ## 5. Performance & Scaling Considerations
 
@@ -85,8 +90,9 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 | Real qanoon.om documents | 100 |
 | Semantic chunks | 2,202 |
 | Extracted topics | 173 |
+| AMENDS relationships | 2 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
-| LLM | qwen2.5:14b via Ollama |
+| LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 
 Sample/synthetic data was removed so the graph contains only real Omani legislation. Hybrid search successfully answers Arabic legal questions and cites the relevant Royal Decrees and articles.
 
@@ -97,6 +103,8 @@ Sample/synthetic data was removed so the graph contains only real Omani legislat
 | Neo4j for graph + vector | Separate vector DB (Pinecone, Weaviate) | Simplifies deployment and traversal between vector results and graph context. |
 | Ollama for LLM (`qwen2.5:14b`) | OpenAI API | Fully free, offline, no API credits required. |
 | qwen3-embedding:4b via Ollama | OpenAI/text-embedding-3-small | Local embedding generation optimized for Arabic and English legal text. |
+| Automatic LLM fallback | Single model | Keeps demo/query interface reliable when the primary model exhausts limited GPU memory. |
+| Regex cross-reference extraction | LLM-based extraction | Fast, deterministic, and avoids additional LLM calls during ingestion. |
 | One Document node | Separate nodes per language | Directly follows exam schema requirement and reduces query complexity. |
 | Resumable checkpointing | Full in-memory crawl | Essential for achieving 100% coverage over unreliable network conditions. |
 
