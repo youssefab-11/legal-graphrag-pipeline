@@ -55,7 +55,7 @@ class Settings:
     CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "200"))
 
     # Search Configuration
-    TOP_K_CANDIDATES: int = int(os.getenv("TOP_K_CANDIDATES", "50"))
+    TOP_K_CANDIDATES: int = int(os.getenv("TOP_K_CANDIDATES", "15"))
     TOP_K_FINAL: int = int(os.getenv("TOP_K_FINAL", "5"))
     TOPIC_MERGE_THRESHOLD: float = float(os.getenv("TOPIC_MERGE_THRESHOLD", "0.88"))
 
