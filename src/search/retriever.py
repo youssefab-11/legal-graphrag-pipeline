@@ -164,15 +164,13 @@ class HybridRetriever:
         MATCH (c:Chunk) WHERE elementId(c) = $chunk_id
         MATCH (d:Document)-[:HAS_CHUNK]->(c)
         OPTIONAL MATCH (d)-[:HAS_TOPIC]->(t:Topic)
-        OPTIONAL MATCH (d)-[:AMENDS|REPEALS]->(related:Document)
         RETURN d.id AS document_id,
                d.title AS title,
                d.document_type AS document_type,
                d.number AS number,
                d.issue_date AS issue_date,
                d.issuer AS issuer,
-               collect(DISTINCT t.name) AS topics,
-               collect(DISTINCT related.id) AS related_documents
+               collect(DISTINCT t.name) AS topics
         """
         try:
             driver = self.neo4j.connect()
@@ -222,6 +220,4 @@ class HybridRetriever:
             f"Topics: {', '.join(context.get('topics', []))}",
             f"Content: {candidate.get('text', '')}",
         ]
-        if context.get("related_documents"):
-            parts.append(f"Related documents: {', '.join(context['related_documents'])}")
         return "\n".join(parts)

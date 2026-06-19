@@ -37,7 +37,7 @@ class Settings:
     OLLAMA_EMBEDDING_MODEL: str = os.getenv(
         "OLLAMA_EMBEDDING_MODEL", "qwen3-embedding:4b"
     )
-    EMBEDDING_DIMENSION: int = int(os.getenv("EMBEDDING_DIMENSION", "768"))
+    EMBEDDING_DIMENSION: int = int(os.getenv("EMBEDDING_DIMENSION", "2560"))
 
     # Scraping Configuration
     QANOON_BASE_URL: str = os.getenv("QANOON_BASE_URL", "https://qanoon.om")
