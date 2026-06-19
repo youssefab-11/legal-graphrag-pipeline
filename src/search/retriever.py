@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from rank_bm25 import BM25Okapi
 from neo4j.exceptions import Neo4jError
+from neo4j import NotificationClassification
 
 from src.config.settings import settings
 from src.ingestion.neo4j_client import get_neo4j_client
@@ -164,17 +165,23 @@ class HybridRetriever:
         MATCH (c:Chunk) WHERE elementId(c) = $chunk_id
         MATCH (d:Document)-[:HAS_CHUNK]->(c)
         OPTIONAL MATCH (d)-[:HAS_TOPIC]->(t:Topic)
+        OPTIONAL MATCH (d)-[:AMENDS|REPEALS]->(related:Document)
         RETURN d.id AS document_id,
                d.title AS title,
                d.document_type AS document_type,
                d.number AS number,
                d.issue_date AS issue_date,
                d.issuer AS issuer,
-               collect(DISTINCT t.name) AS topics
+               collect(DISTINCT t.name) AS topics,
+               collect(DISTINCT related.id) AS related_documents
         """
+
         try:
             driver = self.neo4j.connect()
-            with driver.session(database=settings.NEO4J_DATABASE) as session:
+            with driver.session(
+                database=settings.NEO4J_DATABASE,
+                notifications_disabled_categories=[NotificationClassification.UNRECOGNIZED],
+            ) as session:
                 result = session.run(query, {"chunk_id": chunk_id}).data()
                 return result[0] if result else {}
         except Neo4jError as exc:
@@ -220,4 +227,6 @@ class HybridRetriever:
             f"Topics: {', '.join(context.get('topics', []))}",
             f"Content: {candidate.get('text', '')}",
         ]
+        if context.get("related_documents"):
+            parts.append(f"Related documents: {', '.join(context['related_documents'])}")
         return "\n".join(parts)

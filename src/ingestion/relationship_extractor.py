@@ -3,8 +3,9 @@
 Detects AMENDS and REPEALS relationships between documents based on
 natural language references found in document markdown content.
 
-This implementation uses regex heuristics suitable for the 50–100 document
-pilot. A production system would use a fine-tuned NER or LLM-based extractor.
+Uses language-specific regex patterns over normalized text. Arabic-Indic
+numerals are converted to Western numerals before matching so that
+references like ٣٧/٧٣ are captured as 37/73.
 """
 
 import json
@@ -22,30 +23,56 @@ logger = logging.getLogger(__name__)
 
 
 class RelationshipExtractor:
-    """Extracts legal cross-references from document text."""
+    """Extracts AMENDS and REPEALS legal cross-references from document text."""
+
+    ARABIC_NUMERALS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 
     # English patterns
     AMENDS_PATTERNS_EN = [
-        r"amends\s+(?:Royal Decree|Ministerial Decision|Ministerial Order)\s+(?:No\.?\s*)?(\d+\/\d+)",
-        r"amending\s+(?:Royal Decree|Ministerial Decision|Ministerial Order)\s+(?:No\.?\s*)?(\d+\/\d+)",
+        r"(?:amends|amending|amendment\s+(?:to|of))\s+(?:the\s+)?(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)",
+        r"(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)\s+(?:is\s+)?(?:hereby\s+)?amended",
     ]
 
     REPEALS_PATTERNS_EN = [
-        r"repeals\s+(?:Royal Decree|Ministerial Decision|Ministerial Order)\s+(?:No\.?\s*)?(\d+\/\d+)",
-        r"repealing\s+(?:Royal Decree|Ministerial Decision|Ministerial Order)\s+(?:No\.?\s*)?(\d+\/\d+)",
+        r"(?:repeals|repealing|repeal\s+(?:of|to))\s+(?:the\s+)?(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)",
+        r"(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)\s+(?:is\s+)?(?:hereby\s+)?repealed",
+        r"(?:abolishes|abolishing|abrogates|abrogating)\s+(?:the\s+)?(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)",
+        r"(?:supersedes|superseding|replaces|replacing)\s+(?:the\s+)?(?:Royal Decree|Ministerial Decision|Ministerial Order|Law|Decree)\s+(?:No\.?\s*)?(\d+\s*/\s*\d+)",
     ]
 
-    # Arabic patterns (simplified; Arabic numerals and "المرسوم" / "القرار")
+    # Arabic patterns: explicit amendment / repeal verbs followed by law type and number.
+    # We intentionally avoid preamble references ("بعد الاطلاع على ... وتعديلاته")
+    # because they merely cite prior amendments rather than stating a new one.
+    # ال is optional on the law type to match both "القانون" and "قانون السير".
     AMENDS_PATTERNS_AR = [
-        r"(يعدل|تعديل)\s+(?:المرسوم|القرار|القانون)\s+(?:رقم\s*)?(\d+\/\d+)",
+        # Current law amends target law
+        r"(?:يعدل|تعديل|معدل\s+لـ?|معدل\s+ل|تعديلا\s+لـ?|تعديلاً\s+لـ?)\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+(?:رقم\s*)?(\d+\s*/\s*\d+)",
+        # Title-style: "بتعديل بعض أحكام القرار رقم X/Y"
+        r"بتعديل\s+بعض\s+أحكام\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+رقم\s*(\d+\s*/\s*\d+)",
+        r"بتعديل\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+رقم\s*(\d+\s*/\s*\d+)",
+        # Amendment is made to target law
+        r"(?:يجرى?\s+تعديل|أجريت\s+تعديل|أجري\s+تعديل)\s+(?:على|في)\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+(?:رقم\s*)?(\d+\s*/\s*\d+)",
+        # Adding/replacing articles in target law
+        r"(?:يضاف|يستبدل|يحذف|تضاف|تستبدل|تحذف)\s+(?:[\u0600-\u06FF\s]+?)\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+رقم\s*(\d+\s*/\s*\d+)",
     ]
 
     REPEALS_PATTERNS_AR = [
-        r"(يلغي|إلغاء)\s+(?:المرسوم|القرار|القانون)\s+(?:رقم\s*)?(\d+\/\d+)",
+        # Current law repeals target law
+        r"(?:يلغى|يلغي|إلغاء|ملغى|منسوخ|يُلغى|يُلغي)\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+(?:رقم\s*)?(\d+\s*/\s*\d+)",
+        # Target law is considered repealed
+        r"(?:يعتبر|تعتبر)\s+(?:ال?مرسوم|ال?قرار|ال?قانون|ال?نظام)(?:\s+[\u0600-\u06FF]+){0,3}\s+رقم\s*(\d+\s*/\s*\d+)\s+(?:ملغى|منسوخ|ملغياً|ملغيا)",
+        # General repeal clauses with explicit numbers
+        r"(?:يلغى|يلغي|إلغاء)\s+كل\s+ما\s+يخالف\s+.*?\b(?:القوانين|المراسيم|القرارات)\s+رقم\s*(\d+\s*/\s*\d+)",
+        r"(?:يلغى|يلغي|إلغاء)\s+كل\s+ما\s+يتعارض\s+.*?\b(?:القوانين|المراسيم|القرارات)\s+رقم\s*(\d+\s*/\s*\d+)",
     ]
 
     def __init__(self) -> None:
         self.neo4j = get_neo4j_client()
+
+    @staticmethod
+    def _normalize_arabic_numerals(text: str) -> str:
+        """Convert Arabic-Indic numerals to Western numerals."""
+        return text.translate(RelationshipExtractor.ARABIC_NUMERALS)
 
     @staticmethod
     def _extract_references(text: str, patterns: List[str]) -> List[str]:
@@ -56,7 +83,9 @@ class RelationshipExtractor:
                 # Take the last numeric group as the reference number
                 groups = [g for g in match.groups() if g]
                 if groups:
-                    references.append(groups[-1].strip())
+                    # Normalize spaces around slash: "37 / 73" -> "37/73"
+                    ref = re.sub(r"\s*/\s*", "/", groups[-1].strip())
+                    references.append(ref)
         return list(set(references))
 
     def extract_from_document(self, doc: Dict[str, Any]) -> List[Tuple[str, str, str]]:
@@ -74,17 +103,24 @@ class RelationshipExtractor:
 
         relationships: List[Tuple[str, str, str]] = []
 
-        for content_key in ["contentEn", "contentAr"]:
+        # Extract from title as well; Omani laws often state "...بتعديل المرسوم رقم X/Y"
+        title = doc.get("title", "") or ""
+        content_sources = [
+            ("contentAr", self.AMENDS_PATTERNS_AR, self.REPEALS_PATTERNS_AR),
+            ("contentEn", self.AMENDS_PATTERNS_EN, self.REPEALS_PATTERNS_EN),
+            ("title", self.AMENDS_PATTERNS_AR, self.REPEALS_PATTERNS_AR),
+        ]
+
+        for content_key, amend_patterns, repeal_patterns in content_sources:
             text = doc.get(content_key, "") or ""
             if not text:
                 continue
 
-            if content_key == "contentAr":
-                amends = self._extract_references(text, self.AMENDS_PATTERNS_AR)
-                repeals = self._extract_references(text, self.REPEALS_PATTERNS_AR)
-            else:
-                amends = self._extract_references(text, self.AMENDS_PATTERNS_EN)
-                repeals = self._extract_references(text, self.REPEALS_PATTERNS_EN)
+            # Normalize Arabic numerals so patterns work on both numeral systems
+            text = self._normalize_arabic_numerals(text)
+
+            amends = self._extract_references(text, amend_patterns)
+            repeals = self._extract_references(text, repeal_patterns)
 
             for ref in amends:
                 relationships.append((source_id, "AMENDS", ref))
