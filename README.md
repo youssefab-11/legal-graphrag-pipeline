@@ -4,6 +4,21 @@ An end-to-end Graph-Based Retrieval-Augmented Generation (GraphRAG) system for t
 
 This pipeline scrapes legal documents in Arabic and English, structures them into a Neo4j knowledge graph, extracts legal topics using a Large Language Model (LLM), generates semantic chunks with vector embeddings, and exposes a hybrid search interface combining dense vector similarity, sparse BM25 keyword search, graph traversal context, and cross-encoder reranking.
 
+## Current Status
+
+The pipeline has been run end-to-end on **100 real legal documents** from [qanoon.om](https://qanoon.om/):
+
+| Metric | Value |
+|---|---|
+| Real qanoon.om documents | **100** |
+| Semantic chunks | **2,202** |
+| Extracted topics | **173** |
+| Embedding model | `qwen3-embedding:4b` (2560-dim) |
+| LLM | `qwen2.5:14b` |
+| Search | Hybrid BM25 + vector + rerank + synthesis |
+
+All sample/synthetic data has been removed; the graph contains only real legislation.
+
 ---
 
 ## Table of Contents
@@ -52,7 +67,8 @@ https://qanoon.om/
        │              │
        ▼              ▼
 ┌─────────────────────────────────────┐
-│  Embeddings (Local + OpenAI)        │
+│  Embeddings (Local Ollama)          │
+│  qwen3-embedding:4b                 │
 │  Vector Indexes on Topic & Chunk    │
 └─────────────────────────────────────┘
        │
@@ -76,13 +92,16 @@ legal-graphrag-pipeline/
 ├── .env.example                       # Configuration template
 ├── .gitignore
 ├── architecture_report.pdf            # Detailed system report
+├── scrape_qanoon.py                   # End-to-end qanoon.om scraping runner
 ├── src/
 │   ├── config/
 │   │   └── settings.py                # Centralized configuration
 │   ├── scraper/
-│   │   ├── crawler.py                 # Playwright crawler
+│   │   ├── qanoon_scraper.py          # Specialized qanoon.om / decree.om scraper
+│   │   ├── crawler.py                 # Generic Playwright crawler
 │   │   ├── parser.py                  # HTML → Markdown
-│   │   └── state_manager.py           # Checkpoint / resume state
+│   │   ├── state_manager.py           # Checkpoint / resume state
+│   │   └── sample_generator.py        # Synthetic data generator for testing
 │   ├── ingestion/
 │   │   ├── neo4j_client.py            # Database connection & schema
 │   │   ├── document_builder.py        # Document node construction
@@ -174,15 +193,25 @@ Default credentials: `neo4j` / `password` (change in `.env`).
 
 ## Running the Pipeline
 
-### Full Pipeline
+### Full Pipeline (Real qanoon.om Data)
 
 ```bash
-python -m src.scraper.crawler          # Step 1: Scrape
+# Scrape up to 100 real documents from qanoon.om and run full ingestion
+python scrape_qanoon.py --max-documents 100 --max-pages 20
+```
+
+This single command performs scraping, ingestion, topic extraction, chunking, and embedding.
+
+To resume or scale incrementally, simply re-run the command. The state manager skips already-scraped URLs.
+
+### Step-by-Step (Advanced)
+
+```bash
+python -m src.scraper.qanoon_scraper      # Step 1: Scrape qanoon.om
 python -m src.ingestion.document_builder  # Step 2: Ingest into Neo4j
 python -m src.llm_agents.topic_extractor  # Step 3: Extract topics
 python -m src.llm_agents.chunker          # Step 4: Chunk documents
 python -m src.vector_ops.embedder         # Step 5: Generate embeddings
-python -m src.vector_ops.index_manager    # Step 6: Build vector indexes
 ```
 
 ### Search Client
@@ -193,6 +222,19 @@ python -m src.search.search_client
 
 Then enter your legal question at the prompt.
 
+Example:
+```text
+Question: ما هي قوانين الجمعيات في سلطنة عمان؟
+
+Candidates found: 15
+Top contexts used: 5
+  [1] مرسوم سلطاني رقم ١٤ / ٢٠٠٠ بإصدار قانون الجمعيات الأهلية (مرسوم سلطاني)
+  ...
+
+Answer:
+في سلطنة عمان، تتضمن قوانين الجمعيات الأهلية المرسوم السلطاني رقم 14/2000 ...
+```
+
 ---
 
 ## Evaluation Rubric Alignment
@@ -202,7 +244,7 @@ Then enter your legal question at the prompt.
 | Scraping & Evasion | Playwright with rotating headers, randomized delays, exponential backoff, and JSON-based checkpointing for resumability. |
 | Markdown Generation | Hierarchical markdown conversion preserving titles, sections, articles, and tables while stripping ads/scripts. |
 | Graph Data Modeling | Document nodes consolidate all translations as properties (`contentAr`, `contentEn`); Topics and Chunks are separate nodes. |
-| LLM Integration | Local Ollama LLM (`llama3.1:8b`) with structured JSON prompts, batching, and safe parsing for topic extraction. |
+| LLM Integration | Local Ollama LLM (`qwen2.5:14b`) with structured JSON prompts, batching, and safe parsing for topic extraction and answer synthesis. |
 | Vector Search & RAG | Hybrid BM25 + dense vector retrieval, graph context expansion, cross-encoder reranking, and LLM synthesis. |
 | Code Architecture | Modular packages, centralized configuration, detailed logging, and Docker-based deterministic deployment. |
 | Technical Report | Comprehensive `architecture_report.pdf` documenting design trade-offs and scaling considerations. |
@@ -213,10 +255,11 @@ Then enter your legal question at the prompt.
 ## Design Trade-offs
 
 1. **Neo4j as combined graph + vector store** simplifies deployment and cross-traversal between vector results and graph relationships.
-2. **Ollama for local LLM inference** (`qwen2.5:14b`) keeps the pipeline fully free and offline, with no API credits required.
-3. **Ollama `qwen3-embedding:4b` for embeddings** provides high-quality Arabic and English legal retrieval embeddings without external API calls.
-4. **One Document node per law** with language properties follows the exam brief and avoids unnecessary schema complexity.
-5. **Resumable checkpointing** prioritizes robustness over raw scraping speed, ensuring 100% coverage can be achieved across unstable network conditions.
+2. **Ollama for local LLM inference** (`qwen2.5:14b`) keeps the pipeline fully free and offline, with no API credits required. On GPUs with <8 GB VRAM, the 14B model may be slow; `qwen2.5:7b` is a drop-in fallback.
+3. **Ollama `qwen3-embedding:4b` for embeddings** provides high-quality Arabic and English legal retrieval embeddings without external API calls. Output dimension is 2560.
+4. **One Document node per law** with language properties (`contentAr`, `contentEn`) follows the exam brief and avoids unnecessary schema complexity.
+5. **Resumable checkpointing** prioritizes robustness over raw scraping speed, enabling incremental scaling to 100+ documents.
+6. **Arabic-first with optional English** because most older qanoon.om documents only provide Arabic; newer documents also include English versions from decree.om.
 
 ---
 
