@@ -44,8 +44,8 @@ class Settings:
 
     # Scraping Configuration
     QANOON_BASE_URL: str = os.getenv("QANOON_BASE_URL", "https://qanoon.om")
-    REQUEST_DELAY_MIN: float = float(os.getenv("REQUEST_DELAY_MIN", "1.5"))
-    REQUEST_DELAY_MAX: float = float(os.getenv("REQUEST_DELAY_MAX", "4.0"))
+    REQUEST_DELAY_MIN: float = float(os.getenv("REQUEST_DELAY_MIN", "0.2"))
+    REQUEST_DELAY_MAX: float = float(os.getenv("REQUEST_DELAY_MAX", "0.7"))
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "5"))
     USER_AGENT: str = os.getenv(
         "USER_AGENT",

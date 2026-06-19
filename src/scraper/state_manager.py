@@ -6,6 +6,7 @@ crawling can resume after interruption without losing progress.
 
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -33,6 +34,7 @@ class StateManager:
             "last_updated": None,
             "documents_scraped": 0,
         }
+        self._lock = threading.Lock()
 
         self.load()
 
@@ -46,10 +48,11 @@ class StateManager:
             with open(self.state_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            self.discovered = set(data.get("discovered", []))
-            self.completed = set(data.get("completed", []))
-            self.failed = {k: v for k, v in data.get("failed", {}).items()}
-            self.stats = data.get("stats", self.stats)
+            with self._lock:
+                self.discovered = set(data.get("discovered", []))
+                self.completed = set(data.get("completed", []))
+                self.failed = {k: v for k, v in data.get("failed", {}).items()}
+                self.stats = data.get("stats", self.stats)
 
             logger.info(
                 "Checkpoint loaded: %d discovered, %d completed, %d failed.",
@@ -62,40 +65,45 @@ class StateManager:
 
     def save(self) -> None:
         """Persist current state to disk."""
-        self.stats["last_updated"] = datetime.utcnow().isoformat()
+        with self._lock:
+            self.stats["last_updated"] = datetime.utcnow().isoformat()
 
-        data = {
-            "discovered": sorted(self.discovered),
-            "completed": sorted(self.completed),
-            "failed": self.failed,
-            "stats": self.stats,
-        }
+            data = {
+                "discovered": sorted(self.discovered),
+                "completed": sorted(self.completed),
+                "failed": self.failed,
+                "stats": self.stats,
+            }
 
-        try:
-            with open(self.state_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            logger.debug("Checkpoint saved to %s", self.state_file)
-        except IOError as exc:
-            logger.error("Failed to save checkpoint: %s", exc)
+            try:
+                with open(self.state_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                logger.debug("Checkpoint saved to %s", self.state_file)
+            except IOError as exc:
+                logger.error("Failed to save checkpoint: %s", exc)
 
     def add_discovered(self, urls: List[str]) -> None:
         """Add URLs to the discovered set."""
-        before = len(self.discovered)
-        self.discovered.update(urls)
-        if len(self.discovered) > before:
+        with self._lock:
+            before = len(self.discovered)
+            self.discovered.update(urls)
+            changed = len(self.discovered) > before
+        if changed:
             self.save()
 
     def mark_completed(self, url: str) -> None:
         """Mark a URL as successfully scraped."""
-        self.completed.add(url)
-        self.discarded(url)
-        self.stats["documents_scraped"] = self.stats.get("documents_scraped", 0) + 1
+        with self._lock:
+            self.completed.add(url)
+            self.discarded(url)
+            self.stats["documents_scraped"] = self.stats.get("documents_scraped", 0) + 1
         self.save()
 
     def mark_failed(self, url: str, reason: str) -> None:
         """Mark a URL as failed with a reason."""
-        self.failed[url] = reason
-        self.discarded(url)
+        with self._lock:
+            self.failed[url] = reason
+            self.discarded(url)
         self.save()
 
     def discarded(self, url: str) -> None:
@@ -104,11 +112,13 @@ class StateManager:
 
     def get_pending(self) -> List[str]:
         """Return URLs that have been discovered but not completed or failed."""
-        return sorted(self.discovered - self.completed - set(self.failed.keys()))
+        with self._lock:
+            return sorted(self.discovered - self.completed - set(self.failed.keys()))
 
     def is_completed(self, url: str) -> bool:
         """Check if a URL has already been successfully scraped."""
-        return url in self.completed
+        with self._lock:
+            return url in self.completed
 
     def reset_failed(self) -> None:
         """Clear failed URLs so they can be retried."""

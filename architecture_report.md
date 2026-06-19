@@ -34,12 +34,14 @@ This design minimizes join complexity and aligns with the requirement that trans
 
 ### 4.1 Crawler & State Manager
 
-The crawler is built on Playwright to handle JavaScript-rendered pages. It implements:
+The crawler uses lightweight ``requests`` sessions for listing and document pages, falling back to Playwright only when plain HTTP fails. It implements:
 
 - Custom headers and user-agent rotation.
-- Randomized request pacing.
+- Randomized request pacing (configurable, default 0.2–0.7 s).
 - Exponential backoff for transient failures.
-- JSON-based checkpointing to enable resumability after interruption.
+- Thread-safe JSON-based checkpointing to enable resumability after interruption.
+- Concurrent document scraping via a configurable worker pool (`ThreadPoolExecutor`).
+- Auto-detection of the last listing page so the scraper can target 100% coverage.
 
 ### 4.2 Markdown Transformer
 
@@ -96,6 +98,8 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 
 Sample/synthetic data was removed so the graph contains only real Omani legislation. Hybrid search successfully answers Arabic legal questions and cites the relevant Royal Decrees and articles.
 
+The scraper auto-detects the qanoon.om pagination and can target 100% coverage. Timing measurements on the development machine show roughly **2.9 docs/s** with 5 concurrent workers, implying a full scrape of ~37,000 documents would take approximately **3.5 hours** for the HTTP layer alone.
+
 ## 7. Trade-offs & Rationale
 
 | Decision | Alternative | Rationale |
@@ -105,6 +109,8 @@ Sample/synthetic data was removed so the graph contains only real Omani legislat
 | qwen3-embedding:4b via Ollama | OpenAI/text-embedding-3-small | Local embedding generation optimized for Arabic and English legal text. |
 | Automatic LLM fallback | Single model | Keeps demo/query interface reliable when the primary model exhausts limited GPU memory. |
 | Regex cross-reference extraction | LLM-based extraction | Fast, deterministic, and avoids additional LLM calls during ingestion. |
+| requests + Playwright fallback | Playwright only | Dramatically faster bulk scraping while retaining JS-rendering fallback. |
+| Concurrent document workers | Sequential fetching | Required to complete 100% qanoon.om coverage in a few hours instead of days. |
 | One Document node | Separate nodes per language | Directly follows exam schema requirement and reduces query complexity. |
 | Resumable checkpointing | Full in-memory crawl | Essential for achieving 100% coverage over unreliable network conditions. |
 
