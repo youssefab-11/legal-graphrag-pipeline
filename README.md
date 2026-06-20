@@ -16,6 +16,7 @@ The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ing
 | Extracted topics | **419** |
 | AMENDS relationships | **5** |
 | REPEALS relationships | **2** |
+| Communities (Louvain) | **45** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
 | LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
 | Scraper | requests + Playwright fallback, concurrent workers, auto pagination |
@@ -276,6 +277,16 @@ python -m src.vector_ops.embedder
 
 > **Note:** Topic extraction is the ingestion bottleneck. To speed it up, switch to `qwen2.5:7b` or batch multiple documents per LLM prompt.
 
+### Community Detection (Bonus)
+
+Run Louvain community detection on the Document-Topic graph to discover legal "sub-fields" automatically:
+
+```bash
+python -m src.vector_ops.community_detector
+```
+
+This creates `Community` nodes, assigns `community_id` to each `Document` and `Topic`, and writes a heuristic summary label for each cluster. The current 310-document graph produced **45 communities**, including clear clusters such as Labour Law, Banking/Finance, Tourism, and Legal Practice.
+
 ### Anti-Bot Resilience & CAPTCHA Handling
 
 The current scraper targets the **present-day qanoon.om** (no CAPTCHA observed during development) and uses several layers of politeness and evasion:
@@ -330,7 +341,7 @@ Answer:
 | Vector Search & RAG | Hybrid BM25 + dense vector retrieval, graph context expansion, cross-encoder reranking, and LLM synthesis. |
 | Code Architecture | Modular packages, centralized configuration, detailed logging, and Docker-based deterministic deployment. |
 | Technical Report | Comprehensive `architecture_report.pdf` documenting design trade-offs and scaling considerations. |
-| Bonus Challenges | Topic merging via cosine similarity, multi-stage cross-encoder reranking, and planned Louvain community detection. |
+| Bonus Challenges | Topic merging via cosine similarity, multi-stage cross-encoder reranking, and Louvain community detection with auto-generated summaries. |
 
 ---
 

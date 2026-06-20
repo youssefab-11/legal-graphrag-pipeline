@@ -76,7 +76,11 @@ The search client implements a multi-stage retrieval pipeline:
 3. **Cross-Encoder Reranking**: A local reranker model rescores expanded candidates against the query.
 4. **LLM Synthesis with Fallback**: The primary synthesis model (`qwen2.5:14b`) is tried first; if it fails (e.g., GPU memory exhaustion), the client automatically retries with a configured fallback model (`qwen2.5:7b`) so queries remain answerable.
 
-### 4.8 Anti-Bot Resilience
+### 4.8 Community Detection
+
+As a bonus optimization, the pipeline includes a Louvain community detector that operates on the bipartite Document-Topic graph formed by `HAS_TOPIC` relationships. The algorithm clusters documents and topics into communities that represent emergent legal "sub-fields" (e.g., Labour Law, Banking and Finance, Tourism). Each community is persisted as a `Community` node, and every `Document` and `Topic` is linked to its community via a `BELONGS_TO` relationship. A heuristic summary label is generated from the most frequent topics in each cluster. On the 310-document deployment, the detector identified **45 communities**, with the largest clusters covering Employment Law, Finance, Tourism, and Government Administration.
+
+### 4.9 Anti-Bot Resilience
 
 The crawler is designed to be polite and resilient against common anti-bot measures:
 
@@ -107,6 +111,7 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 | Extracted topics | 419 |
 | AMENDS relationships | 5 |
 | REPEALS relationships | 2 |
+| Communities (Louvain) | 45 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
 | LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 
