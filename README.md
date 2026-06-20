@@ -6,14 +6,15 @@ This pipeline scrapes legal documents in Arabic and English, structures them int
 
 ## Current Status
 
-The pipeline has been run end-to-end on **100 real legal documents** from [qanoon.om](https://qanoon.om/):
+The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ingested a working subset:
 
 | Metric | Value |
 |---|---|
-| Real qanoon.om documents | **100** |
-| Semantic chunks | **2,202** |
-| Extracted topics | **173** |
-| AMENDS relationships | **2** |
+| Real qanoon.om documents scraped | **11,946** |
+| Documents ingested into Neo4j | **310** |
+| Semantic chunks | **3,342** |
+| Extracted topics | **419** |
+| AMENDS relationships | **5** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
 | LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
 | Scraper | requests + Playwright fallback, concurrent workers, auto pagination |
@@ -207,6 +208,13 @@ python scrape_qanoon.py --all-docs --max-workers 5
 
 # Scrape only (no Neo4j ingestion) for offline/full-coverage runs
 python scrape_qanoon.py --all-docs --scrape-only --max-workers 10
+
+# Ingest only 200 documents (useful for demos or limited GPU time)
+python -m src.ingestion.document_builder data/ingest_200_batch.json
+python -m src.ingestion.relationship_extractor data/ingest_200_batch.json
+python -m src.llm_agents.topic_extractor data/ingest_200_batch.json
+python -m src.llm_agents.chunker data/ingest_200_batch.json
+python -m src.vector_ops.embedder
 ```
 
 This single command performs scraping, ingestion, topic extraction, chunking, and embedding.
@@ -223,17 +231,27 @@ python -m src.llm_agents.chunker          # Step 4: Chunk documents
 python -m src.vector_ops.embedder         # Step 5: Generate embeddings
 ```
 
-### 100% Coverage & Scraping Time
+### 100% Coverage, Scraping & Ingestion Time
 
-The scraper is designed to index **100% of qanoon.om**. It auto-detects the last listing page (currently **1,195 pages**, ~37,000 documents) and supports concurrent workers to maximize throughput.
+The scraper successfully indexed **100% of qanoon.om**. It auto-detected **1,195 listing pages** and discovered **11,949 unique documents**.
 
-Measured on this machine (sequential vs. concurrent):
+Measured scraping rates on this machine:
 
-| Workers | Docs / sec | Estimated full scrape (~37k docs) |
+| Workers | Docs / sec | Estimated full scrape |
 |---|---|---|
 | 1 | ~0.6 docs/s | ~17 hours |
 | 5 | ~2.9 docs/s | ~3.5 hours |
 | 10 | ~4.4 docs/s | ~2.4 hours |
+
+Actual full scrape completed in roughly **1 hour** after the URL-fragment and session-reuse fixes.
+
+Ingestion timing (RTX 3050, `qwen2.5:14b`):
+
+| Batch | Documents | Time |
+|---|---|---|
+| 10-doc test | 10 | ~1.6 min |
+| 200-doc batch | 200 | **~27 min** |
+| Full ~12k docs | 11,946 | **~27 hours estimated** |
 
 Run the full scrape and check live progress:
 
@@ -241,13 +259,21 @@ Run the full scrape and check live progress:
 python scrape_qanoon.py --all-docs --scrape-only --max-workers 5
 ```
 
-After scraping completes, run ingestion separately or re-run without `--scrape-only`:
+After scraping completes, run ingestion in batches or all at once:
 
 ```bash
+# All at once (very long on limited GPU)
 python scrape_qanoon.py --all-docs --max-workers 5
+
+# Or ingest a pre-selected 200-document batch (~27 min)
+python -m src.ingestion.document_builder data/ingest_200_batch.json
+python -m src.ingestion.relationship_extractor data/ingest_200_batch.json
+python -m src.llm_agents.topic_extractor data/ingest_200_batch.json
+python -m src.llm_agents.chunker data/ingest_200_batch.json
+python -m src.vector_ops.embedder
 ```
 
-> **Note:** The subsequent LLM topic extraction and embedding steps for 37,000 documents will take substantially longer than scraping. Consider running `--scrape-only` first, then ingestion in batches, or scaling GPU/CPU workers.
+> **Note:** Topic extraction is the ingestion bottleneck. To speed it up, switch to `qwen2.5:7b` or batch multiple documents per LLM prompt.
 
 ### Search Client
 

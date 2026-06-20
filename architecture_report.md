@@ -89,16 +89,17 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 
 | Metric | Value |
 |---|---|
-| Real qanoon.om documents | 100 |
-| Semantic chunks | 2,202 |
-| Extracted topics | 173 |
-| AMENDS relationships | 2 |
+| Real qanoon.om documents scraped | 11,946 |
+| Documents ingested into Neo4j | 310 |
+| Semantic chunks | 3,342 |
+| Extracted topics | 419 |
+| AMENDS relationships | 5 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
 | LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 
 Sample/synthetic data was removed so the graph contains only real Omani legislation. Hybrid search successfully answers Arabic legal questions and cites the relevant Royal Decrees and articles.
 
-The scraper auto-detects the qanoon.om pagination and can target 100% coverage. Timing measurements on the development machine show roughly **2.9 docs/s** with 5 concurrent workers, implying a full scrape of ~37,000 documents would take approximately **3.5 hours** for the HTTP layer alone.
+The scraper achieved 100% coverage of qanoon.om, discovering **11,949 unique documents** across **1,195 listing pages**. The full HTTP scrape completed in roughly **1 hour** after URL-fragment deduplication and per-worker session reuse. Ingestion of a **200-document batch** took approximately **27 minutes** on the development RTX 3050 (mostly topic extraction and embedding), implying a full ingestion of ~12,000 documents would require roughly **27 hours**.
 
 ## 7. Trade-offs & Rationale
 
