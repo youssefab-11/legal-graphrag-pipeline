@@ -506,24 +506,34 @@ class QanoonScraper:
         documents: List[Dict[str, Any]] = []
 
         try:
+            existing_pending = self.state.get_pending()
+
             if seed_urls:
                 seeds = seed_urls
+            elif existing_pending and (all_docs or not self.max_documents or len(existing_pending) >= (self.max_documents or 0)):
+                # Resume from existing state: skip re-discovering listing pages
+                logger.info(
+                    "Resuming from existing state: %d pending documents already discovered. Skipping listing crawl.",
+                    len(existing_pending),
+                )
+                seeds = []
             else:
                 pages = None if all_docs else max_pages
                 seeds = self.generate_page_urls(max_pages=pages, category_url=category_url)
 
             # Discover document links sequentially (lightweight listing pages)
-            all_links: List[str] = []
-            for idx, seed in enumerate(seeds, 1):
-                links = self.discover_document_links(seed)
-                all_links.extend(links)
-                self.state.add_discovered(links)
-                logger.info("Listing page %d/%d complete.", idx, len(seeds))
+            if seeds:
+                all_links: List[str] = []
+                for idx, seed in enumerate(seeds, 1):
+                    links = self.discover_document_links(seed)
+                    all_links.extend(links)
+                    self.state.add_discovered(links)
+                    logger.info("Listing page %d/%d complete.", idx, len(seeds))
 
-                if not all_docs and self.max_documents:
-                    if len(self.state.get_pending()) >= self.max_documents * 2:
-                        logger.info("Enough pending documents discovered. Stopping pagination.")
-                        break
+                    if not all_docs and self.max_documents:
+                        if len(self.state.get_pending()) >= self.max_documents * 2:
+                            logger.info("Enough pending documents discovered. Stopping pagination.")
+                            break
 
             pending = self.state.get_pending()
             self.stats["pages_discovered"] = len(pending)
