@@ -76,6 +76,18 @@ The search client implements a multi-stage retrieval pipeline:
 3. **Cross-Encoder Reranking**: A local reranker model rescores expanded candidates against the query.
 4. **LLM Synthesis with Fallback**: The primary synthesis model (`qwen2.5:14b`) is tried first; if it fails (e.g., GPU memory exhaustion), the client automatically retries with a configured fallback model (`qwen2.5:7b`) so queries remain answerable.
 
+### 4.8 Anti-Bot Resilience
+
+The crawler is designed to be polite and resilient against common anti-bot measures:
+
+- **Requests-first fetching** with a Playwright fallback for JavaScript-rendered pages.
+- **Randomized delays** and exponential backoff on HTTP errors.
+- **Custom headers** and a realistic user-agent string.
+- **JSON checkpointing** so the crawl can resume after blocks or disconnects.
+- **Configurable concurrency** to throttle throughput if the site responds with rate-limit signals.
+
+If qanoon.om were to deploy CAPTCHAs or aggressive throttling, the mitigation path would include adaptive rate limiting (see `docs/adaptive_rate_limiting_plan.md`), rotating residential proxies, and optional CAPTCHA-solving service integration. These capabilities are not active in the current deployment because the target site did not require them, but the modular fetcher and centralized configuration make them straightforward to add.
+
 ## 5. Performance & Scaling Considerations
 
 - **Embedding Generation**: Batch processing and local models reduce cost and latency.

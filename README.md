@@ -276,6 +276,26 @@ python -m src.vector_ops.embedder
 
 > **Note:** Topic extraction is the ingestion bottleneck. To speed it up, switch to `qwen2.5:7b` or batch multiple documents per LLM prompt.
 
+### Anti-Bot Resilience & CAPTCHA Handling
+
+The current scraper targets the **present-day qanoon.om** (no CAPTCHA observed during development) and uses several layers of politeness and evasion:
+
+- **Requests-first, Playwright-fallback** fetching to balance speed and JavaScript rendering needs.
+- **Randomized delays** (`0.2–0.7 s` by default) and per-request jitter.
+- **Exponential backoff** on HTTP errors (`429`, `5xx`).
+- **Custom headers** including `Accept-Language`, `User-Agent`, and `Upgrade-Insecure-Requests`.
+- **Resumable JSON checkpointing** so a block or disconnect does not lose progress.
+- **Concurrent workers** that can be dialed down (`--max-workers 1`) if throttling increases.
+
+If qanoon.om later deploys aggressive throttling or CAPTCHAs, the mitigation path would be:
+
+1. **Adaptive throttling**: monitor response codes / latency and automatically reduce concurrency or increase delays (see `docs/adaptive_rate_limiting_plan.md`).
+2. **IP rotation**: route traffic through a rotating residential proxy pool to distribute load.
+3. **CAPTCHA solving**: integrate a third-party service (e.g., 2Captcha, Anti-Captcha) for image/text challenges, or use a human-in-the-loop queue for rare hard blocks.
+4. **Browser stealth**: rely more heavily on Playwright with stealth plugins, fingerprint rotation, and cookie persistence.
+
+These are not wired into the current code because the target site did not require them, but the architecture (configurable delays, modular fetcher, state manager) is designed to accommodate them.
+
 ### Search Client
 
 ```bash
@@ -310,7 +330,7 @@ Answer:
 | Vector Search & RAG | Hybrid BM25 + dense vector retrieval, graph context expansion, cross-encoder reranking, and LLM synthesis. |
 | Code Architecture | Modular packages, centralized configuration, detailed logging, and Docker-based deterministic deployment. |
 | Technical Report | Comprehensive `architecture_report.pdf` documenting design trade-offs and scaling considerations. |
-| Bonus Challenges | Topic merging via cosine similarity, Louvain community detection, and multi-stage cross-encoder reranking. |
+| Bonus Challenges | Topic merging via cosine similarity, multi-stage cross-encoder reranking, and planned Louvain community detection. |
 
 ---
 
