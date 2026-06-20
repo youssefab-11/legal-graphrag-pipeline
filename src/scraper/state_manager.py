@@ -91,20 +91,22 @@ class StateManager:
         if changed:
             self.save()
 
-    def mark_completed(self, url: str) -> None:
+    def mark_completed(self, url: str, save: bool = True) -> None:
         """Mark a URL as successfully scraped."""
         with self._lock:
             self.completed.add(url)
             self.discarded(url)
             self.stats["documents_scraped"] = self.stats.get("documents_scraped", 0) + 1
-        self.save()
+        if save:
+            self.save()
 
-    def mark_failed(self, url: str, reason: str) -> None:
+    def mark_failed(self, url: str, reason: str, save: bool = True) -> None:
         """Mark a URL as failed with a reason."""
         with self._lock:
             self.failed[url] = reason
             self.discarded(url)
-        self.save()
+        if save:
+            self.save()
 
     def discarded(self, url: str) -> None:
         """No-op placeholder for future priority queue logic."""

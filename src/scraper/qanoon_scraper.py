@@ -40,6 +40,18 @@ class QanoonScraper:
     # Arabic numerals to Western numerals mapping
     ARABIC_NUMERALS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 
+    @staticmethod
+    def normalize_document_url(url: str) -> str:
+        """Normalize a document URL by stripping fragments and ensuring trailing slash.
+
+        qanoon.om sometimes links to the same document with different
+        ``#more-XXX`` fragments. This treats them as one document.
+        """
+        # Remove fragment
+        url = url.split("#")[0]
+        # Ensure trailing slash
+        return url.rstrip("/") + "/"
+
     def __init__(
         self,
         base_url: str = "https://qanoon.om",
@@ -216,7 +228,7 @@ class QanoonScraper:
             parsed = urlparse(absolute)
 
             if parsed.netloc == base_netloc and self.DOC_URL_PATTERN.match(parsed.path):
-                normalized = absolute.rstrip("/") + "/"
+                normalized = self.normalize_document_url(absolute)
                 if normalized not in links:
                     links.append(normalized)
 
@@ -375,6 +387,8 @@ class QanoonScraper:
 
     def _scrape_document_worker(self, url: str) -> Optional[Dict[str, Any]]:
         """Thread worker that scrapes one document."""
+        url = self.normalize_document_url(url)
+
         if self.state.is_completed(url):
             logger.debug("Already scraped: %s", url)
             return None
@@ -385,7 +399,7 @@ class QanoonScraper:
         if not doc:
             with self._stat_lock:
                 self.stats["docs_failed"] += 1
-            self.state.mark_failed(url, "arabic_scrape_failed")
+            self.state.mark_failed(url, "arabic_scrape_failed", save=False)
             return None
 
         en_url = doc.get("english_url")
@@ -396,7 +410,7 @@ class QanoonScraper:
                 doc["contentEn"] = en_content
 
         file_path = self._save_document(doc)
-        self.state.mark_completed(url)
+        self.state.mark_completed(url, save=False)
         with self._stat_lock:
             self.stats["docs_scraped"] += 1
         logger.info("Saved document: %s", file_path)
@@ -404,6 +418,7 @@ class QanoonScraper:
 
     def scrape_document(self, url: str) -> Optional[Dict[str, Any]]:
         """Sequential wrapper for scraping a single document."""
+        url = self.normalize_document_url(url)
         return self._scrape_document_worker(url)
 
     def generate_page_urls(
@@ -524,7 +539,7 @@ class QanoonScraper:
                             logger.error("Worker failed for %s: %s", url, exc)
                             with self._stat_lock:
                                 self.stats["docs_failed"] += 1
-                            self.state.mark_failed(url, str(exc))
+                            self.state.mark_failed(url, str(exc), save=False)
 
                         processed = self.stats["docs_scraped"] + self.stats["docs_failed"]
                         if processed % 10 == 0:
