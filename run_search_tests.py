@@ -1,5 +1,10 @@
 """Run search tests over the current Neo4j knowledge graph."""
 import json
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from src.search.search_client import SearchClient
 
 QUESTIONS = [
@@ -16,7 +21,8 @@ def main() -> None:
     results = []
 
     for q in QUESTIONS:
-        print(f"Processing: {q[:60]}...")
+        safe_q = q[:60].encode("utf-8", errors="replace").decode("utf-8")
+        print(f"Processing: {safe_q}...")
         result = client.search(q)
         results.append(
             {

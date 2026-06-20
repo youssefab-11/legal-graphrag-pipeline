@@ -65,7 +65,7 @@ Embeddings are generated locally using Ollama's `qwen3-embedding:4b` model, whic
 
 ### 4.6 Relationship Extractor
 
-Legal cross-references (`AMENDS` and `REPEALS`) are extracted from document content using language-specific regex patterns. Arabic-Indic numerals are normalized to Western numerals before matching. Extracted references are resolved against the graph using the target document `number` property and persisted as typed Neo4j relationships. In the current 100-document deployment, two `AMENDS` relationships were created; `REPEALS` references were detected but their targets are not present in the sample.
+Legal cross-references (`AMENDS` and `REPEALS`) are extracted from document content using language-specific regex patterns. Arabic-Indic numerals are normalized to Western numerals before matching. Extracted references are resolved against the graph using the target document `number` property and persisted as typed Neo4j relationships. In the current 310-document deployment, **5 `AMENDS`** and **2 `REPEALS`** relationships were created.
 
 ### 4.7 Search Client
 
@@ -105,7 +105,9 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 
 | Metric | Value |
 |---|---|
-| Real qanoon.om documents scraped | 11,946 |
+| qanoon.om documents discovered | 11,949 |
+| qanoon.om documents successfully scraped | 11,946 |
+| Unrecoverable failed URLs (HTTP 404) | 3 |
 | Documents ingested into Neo4j | 310 |
 | Semantic chunks | 3,342 |
 | Extracted topics | 419 |
@@ -117,7 +119,7 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 
 Sample/synthetic data was removed so the graph contains only real Omani legislation. Hybrid search successfully answers Arabic legal questions and cites the relevant Royal Decrees and articles.
 
-The scraper achieved 100% coverage of qanoon.om, discovering **11,949 unique documents** across **1,195 listing pages**. The full HTTP scrape completed in roughly **1 hour** after URL-fragment deduplication and per-worker session reuse. Ingestion of a **200-document batch** took approximately **27 minutes** on the development RTX 3050 (mostly topic extraction and embedding), implying a full ingestion of ~12,000 documents would require roughly **27 hours**.
+The scraper achieved 100% coverage of qanoon.om, discovering **11,949 unique documents** across **1,195 listing pages** and successfully scraping **11,946** of them. The remaining **3 URLs** return HTTP 404 on qanoon.om itself and are unrecoverable. The full HTTP scrape completed in roughly **1 hour** after URL-fragment deduplication and per-worker session reuse. Ingestion of a **200-document batch** took approximately **27 minutes** on the development RTX 3050 (mostly topic extraction and embedding), and the current **310-document** demo graph was built incrementally from multiple batches. Full ingestion of ~12,000 documents would require roughly **27 hours**.
 
 ## 7. Trade-offs & Rationale
 

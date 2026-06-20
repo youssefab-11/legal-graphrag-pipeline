@@ -10,7 +10,9 @@ The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ing
 
 | Metric | Value |
 |---|---|
-| Real qanoon.om documents scraped | **11,946** |
+| qanoon.om documents discovered | **11,949** |
+| qanoon.om documents successfully scraped | **11,946** |
+| Unrecoverable failed URLs (HTTP 404) | **3** |
 | Documents ingested into Neo4j | **310** |
 | Semantic chunks | **3,342** |
 | Extracted topics | **419** |
@@ -235,7 +237,7 @@ python -m src.vector_ops.embedder         # Step 5: Generate embeddings
 
 ### 100% Coverage, Scraping & Ingestion Time
 
-The scraper successfully indexed **100% of qanoon.om**. It auto-detected **1,195 listing pages** and discovered **11,949 unique documents**.
+The scraper successfully indexed **100% of qanoon.om**. It auto-detected **1,195 listing pages**, discovered **11,949 unique documents**, and successfully scraped **11,946** of them. The remaining **3 URLs** return HTTP 404 on qanoon.om itself and are unrecoverable.
 
 Measured scraping rates on this machine:
 
@@ -253,6 +255,7 @@ Ingestion timing (RTX 3050, `qwen2.5:14b`):
 |---|---|---|
 | 10-doc test | 10 | ~1.6 min |
 | 200-doc batch | 200 | **~27 min** |
+| Current demo graph | 310 | **~42 min** |
 | Full ~12k docs | 11,946 | **~27 hours estimated** |
 
 Run the full scrape and check live progress:
