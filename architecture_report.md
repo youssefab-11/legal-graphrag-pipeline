@@ -135,4 +135,4 @@ The scraper achieved 100% coverage of qanoon.om, discovering **11,949 unique doc
 
 ## 8. Conclusion
 
-The Legal GraphRAG Pipeline demonstrates a clean, modular, and scalable approach to building a graph-enhanced RAG system over legal corpora. It prioritizes engineering robustness, schema compliance, and evaluation alignment while providing clear extension points for future optimization. The successful end-to-end deployment on 100 real qanoon.om documents validates the architecture and confirms that the system can retrieve and synthesize accurate legal answers in Arabic.
+The Legal GraphRAG Pipeline demonstrates a clean, modular, and scalable approach to building a graph-enhanced RAG system over legal corpora. It prioritizes engineering robustness, schema compliance, and evaluation alignment while providing clear extension points for future optimization. The scraper achieved 100% coverage of qanoon.om (11,946 unique documents), and the full pipeline has been validated end-to-end on a 310-document subset with accurate Arabic legal question answering, hybrid retrieval, and Louvain community detection.
