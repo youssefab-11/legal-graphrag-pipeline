@@ -94,6 +94,7 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 | Semantic chunks | 3,342 |
 | Extracted topics | 419 |
 | AMENDS relationships | 5 |
+| REPEALS relationships | 2 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
 | LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 

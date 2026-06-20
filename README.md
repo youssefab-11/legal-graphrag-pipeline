@@ -15,6 +15,7 @@ The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ing
 | Semantic chunks | **3,342** |
 | Extracted topics | **419** |
 | AMENDS relationships | **5** |
+| REPEALS relationships | **2** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
 | LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
 | Scraper | requests + Playwright fallback, concurrent workers, auto pagination |
