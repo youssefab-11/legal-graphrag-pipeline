@@ -85,6 +85,9 @@ class QanoonScraper:
         self._playwright_started = False
         self._playwright_lock = threading.Lock()
 
+        # Thread-local requests sessions for concurrent workers
+        self._local = threading.local()
+
         # Timing / progress
         self.stats: Dict[str, Any] = {
             "started_at": None,
@@ -108,10 +111,17 @@ class QanoonScraper:
             "Upgrade-Insecure-Requests": "1",
         }
 
-    def _create_worker_session(self) -> requests.Session:
-        """Create a fresh requests session for a worker thread."""
-        session = requests.Session()
-        session.headers.update(self._default_headers())
+    def _get_worker_session(self) -> requests.Session:
+        """Get or create a thread-local requests session for a worker thread.
+
+        Creating an SSL context per request is expensive; reusing a session
+        per worker thread avoids that overhead and enables connection keep-alive.
+        """
+        session = getattr(self._local, "session", None)
+        if session is None:
+            session = requests.Session()
+            session.headers.update(self._default_headers())
+            self._local.session = session
         return session
 
     def _random_delay(self) -> None:
@@ -393,7 +403,7 @@ class QanoonScraper:
             logger.debug("Already scraped: %s", url)
             return None
 
-        session = self._create_worker_session()
+        session = self._get_worker_session()
         logger.info("Scraping Arabic document: %s", url)
         doc = self._scrape_arabic_document(session, url)
         if not doc:
