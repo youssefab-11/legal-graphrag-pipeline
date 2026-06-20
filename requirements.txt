@@ -37,9 +37,10 @@ tqdm>=4.66.0
 pandas>=2.0.0
 python-dateutil>=2.9.0
 
-# PDF Processing (if needed)
+# PDF Processing
 pypdf>=4.2.0
 fpdf2>=2.7.0
+markdown-pdf>=1.13.0
 
 # Optional: only enable if you later want OpenAI
 # openai>=1.35.0
