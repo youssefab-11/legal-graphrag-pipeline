@@ -55,3 +55,6 @@ neo4j_plugins/
 # Model cache
 models/
 .cache/
+
+# Node.js / OpenCode plugins
+node_modules/

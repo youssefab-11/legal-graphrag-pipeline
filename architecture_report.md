@@ -57,7 +57,7 @@ Neo4j Community Edition is deployed via Docker Compose. The ingestion layer uses
 
 ### 4.4 LLM Agents
 
-The topic extraction agent sends consolidated markdown content to a local LLM via Ollama (`qwen2.5:14b`) with a structured prompt requesting a JSON array of topics. The chunking agent uses `RecursiveCharacterTextSplitter` with configurable chunk size and overlap. Using a local model eliminates API costs and ensures the pipeline operates fully offline.
+The topic extraction agent sends consolidated markdown content to an LLM via a unified client that supports either a local Ollama server (`qwen2.5:14b`) or any OpenAI-compatible endpoint. The default OpenAI-compatible target is the `opencode-llm-proxy` plugin running at `http://127.0.0.1:4010/v1`, which routes requests through an OpenCode Go session. This allows the pipeline to use external models for ingestion without modifying application code. The chunking agent uses `RecursiveCharacterTextSplitter` with configurable chunk size and overlap. The local Ollama path eliminates API costs and keeps the pipeline fully offline; the proxy path dramatically speeds up ingestion on limited GPUs.
 
 ### 4.5 Vector Operations
 

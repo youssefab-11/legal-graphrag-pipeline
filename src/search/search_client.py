@@ -5,11 +5,10 @@ to answer legal questions over the Omani legislation knowledge graph.
 """
 
 import logging
-from typing import Any, Dict, List
-
-import ollama
+from typing import Any, Dict, List, Optional
 
 from src.config.settings import settings
+from src.llm_agents.llm_client import LLMClient
 from src.search.retriever import HybridRetriever
 from src.search.reranker import CrossEncoderReranker
 
@@ -21,25 +20,28 @@ class SearchClient:
 
     def __init__(
         self,
-        llm_model: str = settings.OLLAMA_LLM_MODEL,
-        fallback_llm_model: str = settings.OLLAMA_FALLBACK_LLM_MODEL,
+        llm_model: Optional[str] = None,
+        fallback_llm_model: Optional[str] = None,
+        provider: Optional[str] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
         top_k_candidates: int = settings.TOP_K_CANDIDATES,
         top_k_final: int = settings.TOP_K_FINAL,
     ) -> None:
-        self.llm_model = llm_model
-        self.fallback_llm_model = fallback_llm_model
+        self.llm_client = LLMClient(
+            provider=provider,
+            model=llm_model,
+            fallback_model=fallback_llm_model,
+            base_url=base_url,
+            api_key=api_key,
+        )
         self.top_k_final = top_k_final
         self.retriever = HybridRetriever(top_k=top_k_candidates)
         self.reranker = CrossEncoderReranker()
-        self.ollama_client = ollama.Client(host=settings.OLLAMA_BASE_URL)
 
     def _try_generate(self, model: str, messages: List[Dict[str, str]]) -> str:
         """Attempt to generate a response with the specified model."""
-        response = self.ollama_client.chat(
-            model=model,
-            messages=messages,
-        )
-        return response["message"]["content"]
+        return self.llm_client.chat(messages=messages, model=model)
 
     def synthesize(self, query: str, contexts: List[Dict[str, Any]]) -> str:
         """Generate a final answer using the local LLM and retrieved context.
@@ -78,21 +80,8 @@ class SearchClient:
         ]
 
         try:
-            return self._try_generate(self.llm_model, messages)
+            return self.llm_client.chat_with_fallback(messages)
         except Exception as exc:
-            logger.warning("Primary LLM %s failed: %s", self.llm_model, exc)
-            if self.fallback_llm_model:
-                logger.info("Falling back to LLM: %s", self.fallback_llm_model)
-                try:
-                    return self._try_generate(self.fallback_llm_model, messages)
-                except Exception as fallback_exc:
-                    logger.error(
-                        "Fallback LLM %s also failed: %s",
-                        self.fallback_llm_model,
-                        fallback_exc,
-                        exc_info=True,
-                    )
-                    return f"Sorry, I could not generate an answer at this time. Error: {fallback_exc}"
             logger.error("LLM synthesis failed: %s", exc, exc_info=True)
             return f"Sorry, I could not generate an answer at this time. Error: {exc}"
 

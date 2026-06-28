@@ -180,14 +180,44 @@ Ensure Ollama is running:
 ollama serve
 ```
 
-### 5. Configure Environment
+### 5. Use OpenCode LLM Proxy Instead of Ollama (Optional)
+
+If you have an OpenCode Go subscription, you can route ingestion/search LLM calls through OpenCode instead of running models locally. This bypasses the RTX 3050 GPU bottleneck and makes full ingestion of ~12,000 documents practical.
+
+The project already includes the `opencode-llm-proxy` plugin in `opencode.json`. To use it:
+
+1. **Restart OpenCode** so the proxy starts on `http://127.0.0.1:4010`.
+2. **Copy `.env.example` to `.env`** and switch the LLM provider:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env`:
+
+```bash
+LLM_PROVIDER=openai
+LLM_MODEL=github-copilot/claude-sonnet-4.6
+OPENAI_BASE_URL=http://localhost:4010/v1
+OPENAI_API_KEY=unused
+```
+
+Use whatever model your OpenCode session has access to. You can list available models by curling the proxy:
+
+```bash
+curl http://localhost:4010/v1/models
+```
+
+Embeddings still run locally through Ollama (`qwen3-embedding:4b`).
+
+### 6. Configure Environment
 
 ```bash
 cp .env.example .env
 # Edit .env if you changed default ports or model names
 ```
 
-### 6. Start Neo4j
+### 7. Start Neo4j
 
 ```bash
 docker-compose up -d

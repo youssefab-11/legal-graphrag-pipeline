@@ -42,6 +42,20 @@ class Settings:
     )
     EMBEDDING_DIMENSION: int = int(os.getenv("EMBEDDING_DIMENSION", "2560"))
 
+    # Generic LLM configuration (supports Ollama or OpenAI-compatible APIs)
+    # Examples:
+    #   LLM_PROVIDER=ollama  -> uses OLLAMA_BASE_URL and OLLAMA_LLM_MODEL
+    #   LLM_PROVIDER=openai  -> uses OPENAI_BASE_URL, OPENAI_API_KEY, LLM_MODEL
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "ollama")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", os.getenv("OLLAMA_LLM_MODEL", "qwen2.5:14b"))
+    LLM_FALLBACK_MODEL: str = os.getenv(
+        "LLM_FALLBACK_MODEL", os.getenv("OLLAMA_FALLBACK_LLM_MODEL", "qwen2.5:7b")
+    )
+
+    # OpenAI-compatible endpoint configuration (e.g. opencode-llm-proxy)
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "http://localhost:4010/v1")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "unused")
+
     # Scraping Configuration
     QANOON_BASE_URL: str = os.getenv("QANOON_BASE_URL", "https://qanoon.om")
     REQUEST_DELAY_MIN: float = float(os.getenv("REQUEST_DELAY_MIN", "0.2"))

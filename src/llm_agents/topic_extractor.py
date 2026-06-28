@@ -7,19 +7,20 @@ and creates Topic nodes linked to Document nodes.
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import ollama
 from neo4j.exceptions import Neo4jError
 
 from src.config.settings import settings
 from src.ingestion.neo4j_client import get_neo4j_client
+from src.llm_agents.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
 
 class TopicExtractor:
-    """Extracts legal topics from document content using a local LLM."""
+    """Extracts legal topics from document content using a local or remote LLM."""
 
     SYSTEM_PROMPT = (
         "You are a legal expert specializing in Omani legislation. "
@@ -30,11 +31,17 @@ class TopicExtractor:
 
     def __init__(
         self,
-        model: str = settings.OLLAMA_LLM_MODEL,
-        base_url: str = settings.OLLAMA_BASE_URL,
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
     ) -> None:
-        self.model = model
-        self.client = ollama.Client(host=base_url)
+        self.client = LLMClient(
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+        )
         self.neo4j = get_neo4j_client()
 
     def _clean_response(self, text: str) -> str:
@@ -83,13 +90,12 @@ class TopicExtractor:
         ]
 
         try:
-            response = self.client.chat(model=self.model, messages=messages)
-            raw_output = response["message"]["content"]
+            raw_output = self.client.chat(messages=messages)
             topics = self._parse_topics(raw_output)
             logger.info("Extracted topics: %s", topics)
             return topics
         except Exception as exc:
-            logger.error("Ollama topic extraction failed: %s", exc)
+            logger.error("LLM topic extraction failed: %s", exc)
             return []
 
     def extract_for_document(self, doc: Dict[str, Any]) -> List[str]:

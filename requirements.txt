@@ -42,7 +42,7 @@ pypdf>=4.2.0
 fpdf2>=2.7.0
 markdown-pdf>=1.13.0
 
-# Optional: only enable if you later want OpenAI
-# openai>=1.35.0
+# External LLM support (OpenAI-compatible APIs, e.g. OpenCode LLM proxy)
+openai>=1.35.0
 # langchain>=0.2.0
 # langchain-openai>=0.1.0

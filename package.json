@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "opencode-llm-proxy": "^1.6.1"
+  }
+}
