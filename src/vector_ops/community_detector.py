@@ -129,6 +129,20 @@ class CommunityDetector:
         driver = self.neo4j.connect()
         communities_created = 0
 
+        # Clear previous community assignments so re-runs do not leave stale links
+        cleanup_query = """
+        MATCH ()-[r:BELONGS_TO]->()
+        DELETE r
+        """
+        cleanup_communities_query = """
+        MATCH (c:Community)
+        DELETE c
+        """
+        with driver.session(database=settings.NEO4J_DATABASE) as session:
+            session.run(cleanup_query)
+            session.run(cleanup_communities_query)
+        logger.info("Cleared previous communities and BELONGS_TO relationships.")
+
         # Create Community nodes with summaries
         community_cypher = """
         MERGE (c:Community {id: $community_id})
@@ -223,6 +237,11 @@ class CommunityDetector:
 
 def main() -> None:
     """CLI entrypoint for community detection."""
+    import sys
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     logging.basicConfig(level=settings.LOG_LEVEL)
     detector = CommunityDetector()
     communities = detector.run()
