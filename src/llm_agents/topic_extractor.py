@@ -32,12 +32,23 @@ class TopicExtractor:
         "Example output: [\"Taxation\", \"Labour Law\", \"Omanization\"]"
     )
 
+    BATCH_SYSTEM_PROMPT = (
+        "You are a legal expert specializing in Omani legislation. "
+        "For each document below, identify the top 3 to 5 core legal topics or themes. "
+        "You do not have access to any tools, functions, or commands. "
+        "Do not use tool calls, XML tags, markdown, explanations, or code fences. "
+        "Return ONLY a valid JSON object mapping each document ID to an array of topic strings. "
+        "Example output: {\"doc-1\": [\"Taxation\", \"Labour Law\"], \"doc-2\": [\"Investment\", \"Foreign Capital\"]}"
+    )
+
     def __init__(
         self,
         model: Optional[str] = None,
         provider: Optional[str] = None,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
+        batch_size: int = settings.TOPIC_BATCH_SIZE,
+        batch_max_chars: int = settings.TOPIC_BATCH_MAX_CHARS,
     ) -> None:
         self.client = LLMClient(
             provider=provider,
@@ -46,6 +57,8 @@ class TopicExtractor:
             api_key=api_key,
         )
         self.neo4j = get_neo4j_client()
+        self.batch_size = batch_size
+        self.batch_max_chars = batch_max_chars
 
     def _clean_response(self, text: str) -> str:
         """Remove markdown code fences and extra whitespace."""
@@ -101,6 +114,66 @@ class TopicExtractor:
             logger.error("LLM topic extraction failed: %s", exc)
             return []
 
+    def _build_batch_prompt(self, docs: List[Dict[str, Any]]) -> str:
+        """Build a prompt containing multiple documents."""
+        parts = ["Extract legal topics for each of the following Omani legislation documents:\n"]
+        for doc in docs:
+            doc_id = doc.get("id", "unknown")
+            content = doc.get("contentEn") or doc.get("contentAr") or doc.get("raw_markdown", "")
+            truncated = (content or "")[: self.batch_max_chars]
+            parts.append(f"\n[Document ID: {doc_id}]\n{truncated}\n")
+        return "\n".join(parts)
+
+    def _parse_batch_topics(self, text: str, doc_ids: List[str]) -> Dict[str, List[str]]:
+        """Parse a JSON object mapping document IDs to topic arrays."""
+        cleaned = self._clean_response(text)
+        try:
+            parsed = json.loads(cleaned)
+            if not isinstance(parsed, dict):
+                raise ValueError("Response is not a JSON object")
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.warning("Failed to parse batch JSON response: %s", exc)
+            return {}
+
+        result: Dict[str, List[str]] = {}
+        for doc_id in doc_ids:
+            topics = parsed.get(doc_id)
+            if isinstance(topics, list):
+                result[doc_id] = [str(t).strip() for t in topics if str(t).strip()]
+            elif isinstance(topics, dict) and "topics" in topics:
+                result[doc_id] = [str(t).strip() for t in topics["topics"] if str(t).strip()]
+            else:
+                result[doc_id] = []
+        return result
+
+    def extract_batch(self, docs: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+        """Extract topics for a batch of documents in a single LLM call.
+
+        Args:
+            docs: List of document dictionaries.
+
+        Returns:
+            Dictionary mapping document ID to list of topic strings.
+        """
+        if not docs:
+            return {}
+
+        doc_ids = [doc.get("id") for doc in docs if doc.get("id")]
+        if len(doc_ids) != len(docs):
+            logger.warning("Some documents in batch have no id.")
+
+        messages = [
+            {"role": "system", "content": self.BATCH_SYSTEM_PROMPT},
+            {"role": "user", "content": self._build_batch_prompt(docs)},
+        ]
+
+        try:
+            raw_output = self.client.chat(messages=messages)
+            return self._parse_batch_topics(raw_output, doc_ids)
+        except Exception as exc:
+            logger.error("Batch LLM topic extraction failed: %s", exc)
+            return {}
+
     def extract_for_document(self, doc: Dict[str, Any]) -> List[str]:
         """Extract topics using the best available language content."""
         # Prefer English if available, otherwise Arabic
@@ -152,11 +225,37 @@ class TopicExtractor:
         return topics
 
     def process_documents(self, docs: List[Dict[str, Any]]) -> int:
-        """Extract topics for a list of documents."""
+        """Extract topics for a list of documents using batching."""
         total = 0
-        for doc in tqdm(docs, desc="Extracting topics", unit="doc"):
-            topics = self.process_document(doc)
-            total += len(topics)
+        failed_docs: List[Dict[str, Any]] = []
+
+        # Process documents in batches
+        num_batches = (len(docs) + self.batch_size - 1) // self.batch_size
+        desc = f"Extracting topics (batches of {self.batch_size})"
+        for i in tqdm(range(num_batches), desc=desc, unit="batch"):
+            batch = docs[i * self.batch_size : (i + 1) * self.batch_size]
+            batch_results = self.extract_batch(batch)
+
+            for doc in batch:
+                doc_id = doc.get("id")
+                if not doc_id:
+                    continue
+
+                topics = batch_results.get(doc_id)
+                if topics is None or not topics:
+                    failed_docs.append(doc)
+                    continue
+
+                self.create_topic_nodes(doc_id, topics)
+                total += len(topics)
+
+        # Fallback: individually process any docs that failed in batch mode
+        if failed_docs:
+            logger.info("Falling back to individual extraction for %d documents.", len(failed_docs))
+            for doc in tqdm(failed_docs, desc="Individual fallback", unit="doc"):
+                topics = self.process_document(doc)
+                total += len(topics)
+
         logger.info("Topic extraction complete: %d topics across %d documents.", total, len(docs))
         return total
 
