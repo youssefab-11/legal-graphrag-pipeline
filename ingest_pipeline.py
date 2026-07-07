@@ -18,6 +18,7 @@ import json
 import logging
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from src.config.settings import settings
@@ -27,14 +28,16 @@ logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s [%(levelname)s
 logger = logging.getLogger(__name__)
 
 
-def run_command(cmd: list[str], description: str) -> None:
+def run_command(cmd: list[str], description: str, step: int, total: int) -> None:
     """Run a subprocess command and stream output."""
-    logger.info("Starting: %s", description)
+    logger.info("[%d/%d] Starting: %s", step, total, description)
+    start = time.time()
     result = subprocess.run(cmd, capture_output=False, text=True)
+    elapsed = time.time() - start
     if result.returncode != 0:
-        logger.error("Failed: %s (exit code %d)", description, result.returncode)
+        logger.error("[%d/%d] Failed: %s after %.1fs (exit code %d)", step, total, description, elapsed, result.returncode)
         sys.exit(result.returncode)
-    logger.info("Completed: %s", description)
+    logger.info("[%d/%d] Completed: %s in %.1fs", step, total, description, elapsed)
 
 
 def build_batch(batch_size: int, output_path: Path) -> int:
@@ -96,8 +99,8 @@ def main() -> None:
         ([sys.executable, "-m", "src.vector_ops.community_detector"], "Community detector"),
     ]
 
-    for cmd, desc in steps:
-        run_command(cmd, desc)
+    for idx, (cmd, desc) in enumerate(steps, start=1):
+        run_command(cmd, desc, idx, len(steps))
 
     logger.info("Pipeline complete. Ingested %d documents.", count)
 

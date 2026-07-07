@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from neo4j.exceptions import Neo4jError
+from tqdm import tqdm
 
 from src.config.settings import settings
 from src.ingestion.neo4j_client import get_neo4j_client
@@ -153,7 +154,7 @@ class TopicExtractor:
     def process_documents(self, docs: List[Dict[str, Any]]) -> int:
         """Extract topics for a list of documents."""
         total = 0
-        for doc in docs:
+        for doc in tqdm(docs, desc="Extracting topics", unit="doc"):
             topics = self.process_document(doc)
             total += len(topics)
         logger.info("Topic extraction complete: %d topics across %d documents.", total, len(docs))
