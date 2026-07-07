@@ -18,7 +18,7 @@ The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ing
 | Extracted topics | **845** |
 | AMENDS relationships | **8** |
 | REPEALS relationships | **4** |
-| Communities (Louvain) | **45** |
+| Communities (Louvain) | **73** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
 | LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
 | Scraper | requests + Playwright fallback, concurrent workers, auto pagination |

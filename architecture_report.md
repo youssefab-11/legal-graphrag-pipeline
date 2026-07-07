@@ -113,7 +113,7 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 | Extracted topics | 845 |
 | AMENDS relationships | 8 |
 | REPEALS relationships | 4 |
-| Communities (Louvain) | 45 |
+| Communities (Louvain) | 73 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
 | LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 
