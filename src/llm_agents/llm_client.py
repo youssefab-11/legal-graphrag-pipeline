@@ -63,7 +63,11 @@ class LLMClient:
         max_tokens: Optional[int] = None,
     ) -> str:
         """Call an OpenAI-compatible chat completions endpoint."""
-        kwargs: Dict[str, Any] = {"model": model, "messages": messages}
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "tool_choice": "none",
+        }
         if temperature is not None:
             kwargs["temperature"] = temperature
         if max_tokens is not None:

@@ -25,7 +25,9 @@ class TopicExtractor:
     SYSTEM_PROMPT = (
         "You are a legal expert specializing in Omani legislation. "
         "Your task is to read the provided legal text and identify the top 3 to 5 core legal topics or themes. "
-        "Return ONLY a valid JSON array of strings, with no markdown, no explanation, and no code fences. "
+        "You do not have access to any tools, functions, or commands. "
+        "Do not use tool calls, XML tags, markdown, explanations, or code fences. "
+        "Return ONLY a valid JSON array of strings. "
         "Example output: [\"Taxation\", \"Labour Law\", \"Omanization\"]"
     )
 

@@ -64,6 +64,8 @@ class SearchClient:
         system_prompt = (
             "You are a legal assistant specializing in Omani legislation. "
             "Use ONLY the provided legal context to answer the question. "
+            "You do not have access to any tools, functions, or commands. "
+            "Do not use tool calls, XML tags, or markdown formatting. "
             "If the context does not contain enough information, say so. "
             "Be concise, accurate, and cite relevant document numbers when possible."
         )
