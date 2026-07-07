@@ -78,7 +78,7 @@ class Settings:
 
     # Topic extraction batching
     TOPIC_BATCH_SIZE: int = int(os.getenv("TOPIC_BATCH_SIZE", "5"))
-    TOPIC_BATCH_MAX_CHARS: int = int(os.getenv("TOPIC_BATCH_MAX_CHARS", "1500"))
+    TOPIC_BATCH_MAX_CHARS: int = int(os.getenv("TOPIC_BATCH_MAX_CHARS", "4000"))
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
