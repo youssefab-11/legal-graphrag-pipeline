@@ -110,10 +110,10 @@ The pipeline has been executed end-to-end on real data from qanoon.om. The resul
 | Unrecoverable failed URLs (HTTP 404) | 3 |
 | Documents ingested into Neo4j | 510 |
 | Semantic chunks | 4,105 |
-| Extracted topics | 845 |
+| Extracted topics | 646 |
 | AMENDS relationships | 8 |
 | REPEALS relationships | 4 |
-| Communities (Louvain) | 73 |
+| Communities (Louvain) | 42 |
 | Embedding dimensions | 2560 (qwen3-embedding:4b) |
 | LLM | qwen2.5:14b via Ollama (qwen2.5:7b fallback) |
 
