@@ -13,12 +13,12 @@ The scraper has achieved **100% coverage** of qanoon.om and the pipeline has ing
 | qanoon.om documents discovered | **11,949** |
 | qanoon.om documents successfully scraped | **11,946** |
 | Unrecoverable failed URLs (HTTP 404) | **3** |
-| Documents ingested into Neo4j | **510** |
-| Semantic chunks | **4,105** |
-| Extracted topics | **646** |
-| AMENDS relationships | **8** |
-| REPEALS relationships | **4** |
-| Communities (Louvain) | **42** |
+| Documents ingested into Neo4j | **710** |
+| Semantic chunks | **4,917** |
+| Extracted topics | **798** |
+| AMENDS relationships | **9** |
+| REPEALS relationships | **7** |
+| Communities (Louvain) | **37** |
 | Embedding model | `qwen3-embedding:4b` (2560-dim) |
 | LLM | `qwen2.5:14b` (with `qwen2.5:7b` fallback) |
 | Scraper | requests + Playwright fallback, concurrent workers, auto pagination |
